@@ -10,16 +10,19 @@ H = struct2cell(load('impulse_responses.mat'));
 [s2, ~] = audioread('datasets/babble_noise.wav');
 [s3, ~] = audioread('datasets/Speech_shaped_noise.wav');
 [s4, ~] = audioread('datasets/aritificial_nonstat_noise.wav');
-[s5, fs] = audioread('datasets/clean_speech.wav');
+[s5, fs] = audioread('datasets/clean_speech.wav');  % Target source
 
-% Truncate all files to the same length
-min_length = min([length(s1), length(s2), length(s3), ...
-                  length(s4), length(s5)]);
-S = cat(2, s1(1:min_length), s2(1:min_length), ...
-    s3(1:min_length), s4(1:min_length), s5(1:min_length));
+% Pad the shorter signals with zeros
+max_length = max([length(s1), length(s2), length(s3), length(s4), length(s5)]);
+s1 = [s1; zeros(max_length - length(s1), 1)];
+s2 = [s2; zeros(max_length - length(s2), 1)];
+s3 = [s3; zeros(max_length - length(s3), 1)];
+s4 = [s4; zeros(max_length - length(s4), 1)];
+s5 = [s5; zeros(max_length - length(s5), 1)];
+S = cat(2, s1, s2, s3, s4, s5);
 
 % Convolve the impulse responses for each source - microphone pair
-signal_length = min_length;
+signal_length = max_length;
 signals_sources_mics = zeros(signal_length, 5, 4);
 for i = 1:NUM_SOURCES
     for j = 1:NUM_MICROPHONES
