@@ -30,7 +30,7 @@ for i = 1:NUM_SOURCES
     end
 end
 
-% Superposition from each source at each microphone:
+% Superposition from all sources at each microphone:
 signals_mics = squeeze(sum(signals_sources_mics, 2));
 
 % Now we're trying to isolate source 5 (target)...
