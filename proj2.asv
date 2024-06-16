@@ -15,7 +15,7 @@ H = struct2cell(load('impulse_responses.mat'));
 % Making the length of the whole recording one min and adding the clean
 % part at the end
 scaling_factor = 2;
-max_length = fs*60;  % 60 seconds
+max_length = fs*50;  % 60 seconds
 % length of noisy part
 noisy_length_n = max_length - length(s5);
 
@@ -52,34 +52,33 @@ noise_frame_end = noise_end_time * fs*2/N;
 alpha = 0.5;
 K = size(F,1);
 L = size(T,1);
-Rx = zeros(K, L, NUM_MICROPHONES, NUM_MICROPHONES);
-Rn = zeros(K, L, NUM_MICROPHONES, NUM_MICROPHONES);
+Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
+Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
+S = zeros(K, L);
 for k = 1:K
-    vec_x = X(k,1,:);
-    Rx(k,1,:,:) = vec_x(:)*vec_x(:)';
-    Rn(k,1,:,:) = vec_x(:)*vec_x(:)';
-    for l = 2:L
-        vec_x = X(k,l,:);
-        Rx(k,l,:,:) = alpha*squeeze(Rx(k,l-1,:,:)) + (1-alpha)* vec_x(:)*vec_x(:)';
-        if l < noise_frame_end
-            Rn(k,l,:,:) = alpha*squeeze(Rn(k,l-1,:,:)) + (1-alpha)* vec_x(:)*vec_x(:)';
+    for l = 1:L
+        if l==1
+            vec_x = X(k,1,:);
+            Rx = vec_x(:)*vec_x(:)';
+            Rn = vec_x(:)*vec_x(:)';
         else
-            Rn(k,l,:,:) = squeeze(Rn(k,l-1,:,:));
+            vec_x = X(k,l,:);
+            Rx = alpha*Rx + (1-alpha)* vec_x(:)*vec_x(:)';
+            if l < noise_frame_end
+                Rn = alpha*Rn + (1-alpha)* vec_x(:)*vec_x(:)';
+            else
+                Rn = Rn_prev;
+            end
         end
-
-        
+        [a = estimate_a(Rx, Rn);
+        inv_Rx = pinv(Rx);
+        w = inv_Rx * a /(a'*inv_Rx*a);
+        S(k,l) = w'*squeeze(X(k,l,:)); 
+        Rn_prev= Rn; 
     end
 end
 
 % Now we're trying to isolate source 5 (target)...
-S = zeros(K, L);
-for k = 1:K
-    for l = 1:L
-        a = estimate_a(squeeze(Rx(k,l,:,:)), squeeze(Rn(k,l,:,:)));
-        w = a /(a'*a);
-        S(k,l) = w'*squeeze(X(k,l,:)); 
-    end
-end
 
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
 

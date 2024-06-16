@@ -1,7 +1,8 @@
-function a_hat = estimate_a(Rx, Rn)
+function [a_hat, sigma_s] = estimate_a(Rx, Rn)
 [~,D,Q] = eig(Rx, Rn);
-% Rs_hat = Q(:,1)*(D(1,1)-1)*Q(:,1)';
-[D, ind] = sort(D);
-Q = Q(:, ind);
-a_hat = Q(:,1);
+eig_vals = spdiags(D);
+[eig_vals_sorted, ind] = sort(eig_vals, 'descend');
+a_hat = Q(:,ind(1));
+% Rs_hat = a_hat*(D(1,1)-1)*a_hat';
+sigma_s = eig_vals_sorted(1)-1;
 end
