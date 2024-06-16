@@ -14,7 +14,7 @@ H = struct2cell(load('impulse_responses.mat'));
 
 % Making the length of the whole recording one min and adding the clean
 % part at the end
-scaling_factor = 2;
+scaling_factor = 1;
 max_length = fs*50;  % 60 seconds
 % length of noisy part
 noisy_length_n = max_length - length(s5);
@@ -55,6 +55,7 @@ L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
+mu = 0.5; 
 for k = 1:K
     for l = 1:L
         if l==1
@@ -70,16 +71,19 @@ for k = 1:K
                 Rn = Rn_prev;
             end
         end
-        [a,~] = estimate_a(Rx, Rn);
-        inv_Rx = pinv(Rx);
-        w = inv_Rx * a /(a'*inv_Rx*a);
+        [a,sigma_s] = estimate_a(Rx, Rn);
+        inv_Rn = pinv(Rn);
+        w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
         S(k,l) = w'*vec_x(:); 
         Rn_prev= Rn; 
+        if isnan(S(k,l))
+            disp([k,l])
+        end
     end
 end
 
 % Now we're trying to isolate source 5 (target)...
-
+S(isnan(S))=0;
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
 
 

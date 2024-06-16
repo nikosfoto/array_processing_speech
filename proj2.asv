@@ -70,10 +70,10 @@ for k = 1:K
                 Rn = Rn_prev;
             end
         end
-        [a = estimate_a(Rx, Rn);
+        [a,sigma_s] = estimate_a(Rx, Rn);
         inv_Rx = pinv(Rx);
-        w = inv_Rx * a /(a'*inv_Rx*a);
-        S(k,l) = w'*squeeze(X(k,l,:)); 
+        w = sigma_s/(sigma_s*(a'*inv_Rx*a)+mu)                inv_Rx * a /(a'*inv_Rx*a);
+        S(k,l) = w'*vec_x(:); 
         Rn_prev= Rn; 
     end
 end
