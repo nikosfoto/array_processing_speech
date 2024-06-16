@@ -14,7 +14,7 @@ H = struct2cell(load('impulse_responses.mat'));
 
 % Making the length of the whole recording one min and adding the clean
 % part at the end
-scaling_factor = 2;
+scaling_factor = 1;
 max_length = fs*50;  % 60 seconds
 % length of noisy part
 noisy_length_n = max_length - length(s5);
@@ -28,6 +28,12 @@ s4 = [s4; s4(1:max_length-length(s4))];
 % adding the speech to the last part of the total duration
 s5 = [zeros(max_length-length(s5), 1); scaling_factor*s5];
 S = cat(2, s1, s2, s3, s4, s5);
+
+%Finding the places where there is no speech in s5
+idx = detectSpeech(s5,fs);
+for i = 1:length(idx)-1
+    s5(idx(i,2 ): idx(i+1,1)) = 0;
+end
 
 % Convolve the impulse responses for each source - microphone pair
 signal_length = max_length;
@@ -55,6 +61,7 @@ L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
+mu = 0.5; 
 for k = 1:K
     for l = 1:L
         if l==1
@@ -71,15 +78,18 @@ for k = 1:K
             end
         end
         [a,sigma_s] = estimate_a(Rx, Rn);
-        inv_Rx = pinv(Rx);
-        w = sigma_s/(sigma_s*(a'*inv_Rx*a)+mu)                inv_Rx * a /(a'*inv_Rx*a);
+        inv_Rn = pinv(Rn);
+        w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
         S(k,l) = w'*vec_x(:); 
         Rn_prev= Rn; 
+        if isnan(S(k,l))
+            disp([k,l])
+        end
     end
 end
 
 % Now we're trying to isolate source 5 (target)...
-
+S(isnan(S))=0;
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
 
 

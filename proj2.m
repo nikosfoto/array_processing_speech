@@ -29,6 +29,12 @@ s4 = [s4; s4(1:max_length-length(s4))];
 s5 = [zeros(max_length-length(s5), 1); scaling_factor*s5];
 S = cat(2, s1, s2, s3, s4, s5);
 
+%Finding the places where there is no speech in s5
+idx = detectSpeech(s5,fs);
+for i = 1:length(idx)-1
+    s5(idx(i,2 ): idx(i+1,1)) = 0;
+end
+
 % Convolve the impulse responses for each source - microphone pair
 signal_length = max_length;
 signals_sources_mics = zeros(signal_length, 5, 4);
@@ -43,7 +49,7 @@ signals_mics = squeeze(sum(signals_sources_mics, 2));
 
 % Perform STFT
 N = 320;   % 20ms or alternatively N=256 for 16ms
-[X,F,T] = stft(signals_mics, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
+[X,F,T] = stft(signals_mics, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
 noise_end_time = noisy_length_n/fs;  % in seconds
 noise_frame_end = noise_end_time * fs*2/N;
@@ -84,7 +90,7 @@ end
 
 % Now we're trying to isolate source 5 (target)...
 S(isnan(S))=0;
-[s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
+[s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
 
 
