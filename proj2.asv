@@ -66,6 +66,8 @@ for k = 1:K
         else
             Rn(k,l,:,:) = squeeze(Rn(k,l-1,:,:));
         end
+
+        
     end
 end
 
@@ -75,11 +77,13 @@ for k = 1:K
     for l = 1:L
         a = estimate_a(squeeze(Rx(k,l,:,:)), squeeze(Rn(k,l,:,:)));
         w = a /(a'*a);
-        S(k,l) = w'*X(k,l,:)
+        S(k,l) = w'*squeeze(X(k,l,:)); 
     end
 end
 
-s = istft(S)
+[s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
+
+
 
 
 

@@ -15,7 +15,7 @@ H = struct2cell(load('impulse_responses.mat'));
 % Making the length of the whole recording one min and adding the clean
 % part at the end
 scaling_factor = 2;
-max_length = fs*60;  % 60 seconds
+max_length = fs*45;  % 60 seconds
 % length of noisy part
 noisy_length_n = max_length - length(s5);
 
@@ -54,6 +54,7 @@ K = size(F,1);
 L = size(T,1);
 Rx = zeros(K, L, NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(K, L, NUM_MICROPHONES, NUM_MICROPHONES);
+S = zeros(K, L);
 for k = 1:K
     vec_x = X(k,1,:);
     Rx(k,1,:,:) = vec_x(:)*vec_x(:)';
@@ -66,18 +67,16 @@ for k = 1:K
         else
             Rn(k,l,:,:) = squeeze(Rn(k,l-1,:,:));
         end
+        a = estimate_a(squeeze(Rx(k,l,:,:)), squeeze(Rn(k,l,:,:)));
+        inv_Rx = inv(squeeze(Rx(k,l,:,:)));
+        w = inv_Rx * a /(a'*inv_Rx*a);
+        S(k,l) = w'*squeeze(X(k,l,:)); 
     end
 end
 
 % Now we're trying to isolate source 5 (target)...
-S = zeros(K, L);
-for k = 1:K
-    for l = 1:L
-        a = estimate_a(squeeze(Rx(k,l,:,:)), squeeze(Rn(k,l,:,:)));
-        w = a /(a'*a);
-        S(k,l) = w'*squeeze(X(k,l,:)); 
-    end
-end
+
+
 
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=N);
 
