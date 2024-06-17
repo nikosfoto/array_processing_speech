@@ -59,7 +59,7 @@ L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
-mu = 0.3; 
+mu = 0.5; 
 for k = 1:K
     for l = 1:L
         if l==1
@@ -76,13 +76,20 @@ for k = 1:K
             end
         end
         [a,sigma_s] = estimate_a(Rx, Rn);
-        inv_R = pinv(Rx);
 
         % Multi channel
+        %inv_R = pinv(Rn);
         %w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
 
         % MVDR
-        w = (inv_R *a ) / (a'*inv_R * a);
+        %inv_R = pinv(Rx);
+        % w = (inv_R *a ) / (a'*inv_R * a);
+
+        % signal distortion weighted
+        e = [1;0;0;0];
+        Rs = sigma_s* a * a'; 
+        w = (Rs + mu*Rn)\ Rs *e;
+
         S(k,l) = w'*vec_x(:); 
         Rn_prev= Rn; 
     end
