@@ -15,7 +15,7 @@ H = struct2cell(load('impulse_responses.mat'));
 % Making the length of the whole recording one min and adding the clean
 % part at the end
 scaling_factor = 1;
-max_length = fs*50;  % 60 seconds
+max_length = fs*40;  % 40 seconds
 % length of noisy part
 noisy_length_n = max_length - length(s5);
 
@@ -53,13 +53,13 @@ noisy_frames = findnoise(s5, fs, N/2);
 
 %%
 % Empirical cross PSD
-alpha = 0.2;
+alpha = 0.7;
 K = size(F,1);
 L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
-mu = 0.5; 
+mu = 0.7; 
 for k = 1:K
     for l = 1:L
         if l==1
@@ -68,9 +68,9 @@ for k = 1:K
             Rn = vec_x(:)*vec_x(:)';
         else
             vec_x = X(k,l,:);
-            Rx = alpha*Rx + (1-alpha)* vec_x(:)*vec_x(:)';
+            Rx = alpha*Rx_prev + (1-alpha)* vec_x(:)*vec_x(:)';
             if noisy_frames(l) == 1
-                Rn = alpha*Rn + (1-alpha)* vec_x(:)*vec_x(:)';
+                Rn = alpha*Rn_prev + (1-alpha)* vec_x(:)*vec_x(:)';
             else
                 Rn = Rn_prev;
             end
@@ -81,17 +81,18 @@ for k = 1:K
         %inv_R = pinv(Rn);
         %w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
 
-        % MVDR
-        %inv_R = pinv(Rx);
+        % % MVDR
+        % inv_R = pinv(Rx);
         % w = (inv_R *a ) / (a'*inv_R * a);
 
         % signal distortion weighted
         e = [1;0;0;0];
         Rs = sigma_s* a * a'; 
-        w = (Rs + mu*Rn)\ Rs *e;
+        w = pinv(Rs + mu*Rn)* Rs*e;
 
         S(k,l) = w'*vec_x(:); 
-        Rn_prev= Rn; 
+        Rn_prev = Rn;
+        Rx_prev = Rx;
     end
 end
 
@@ -107,4 +108,9 @@ plot(real(s))
 hold("off")
 
 %%
-stoi(s5, real(s), fs) 
+% pure_s5 = s5(end-577655+1:end);
+pure_s5_mic1 = conv(s5(end-577655+1:end), H{5}(1,:), "same");
+stoi(pure_s5_mic1, real(s(end-577655+1:end)), fs) 
+%%
+SNR_received = 20*log10( norm(pure_s5_mic1) / norm(signals_mics(end-577655+1:end,1)-pure_s5_mic1))
+SNR_output = 20*log10( norm(pure_s5_mic1) / norm(real(s(end-577655+1:end))-pure_s5_mic1))
