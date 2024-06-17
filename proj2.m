@@ -28,13 +28,7 @@ s4 = [s4; s4(1:max_length-length(s4))];
 % adding the speech to the last part of the total duration
 s5 = [zeros(max_length-length(s5), 1); scaling_factor*s5];
 S = cat(2, s1, s2, s3, s4, s5);
-
-%Finding the places where there is no speech in s5
-idx = detectSpeech(s5,fs);
-for i = 1:length(idx)-1
-    s5(idx(i,2 ): idx(i+1,1)) = 0;
-end
-
+%%
 % Convolve the impulse responses for each source - microphone pair
 signal_length = max_length;
 signals_sources_mics = zeros(signal_length, 5, 4);
@@ -46,14 +40,18 @@ end
 
 % Superposition from all sources at each microphone:
 signals_mics = squeeze(sum(signals_sources_mics, 2));
-
+%%
 % Perform STFT
 N = 320;   % 20ms or alternatively N=256 for 16ms
 [X,F,T] = stft(signals_mics, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
-noise_end_time = noisy_length_n/fs;  % in seconds
-noise_frame_end = noise_end_time * fs*2/N;
+%noise_end_time = noisy_length_n/fs;  % in seconds
+%noise_frame_end = noise_end_time * fs*2/N;
 
+noisy_frames = findnoise(s5, fs, N/2);
+
+
+%%
 % Empirical cross PSD
 alpha = 0.5;
 K = size(F,1);
@@ -71,7 +69,7 @@ for k = 1:K
         else
             vec_x = X(k,l,:);
             Rx = alpha*Rx + (1-alpha)* vec_x(:)*vec_x(:)';
-            if l < noise_frame_end
+            if noisy_frames(l) == 1
                 Rn = alpha*Rn + (1-alpha)* vec_x(:)*vec_x(:)';
             else
                 Rn = Rn_prev;
