@@ -6,8 +6,8 @@ NUM_MICROPHONES = 4;
 
 % Load impulse respones and audio files (same fs)
 H = struct2cell(load('impulse_responses.mat'));
-[s1, ~] = audioread('datasets/clean_speech_2.wav');
-[s2, ~] = audioread('datasets/babble_noise.wav');
+[s1, ~] = audioread('datasets/babble_noise.wav');
+[s2, ~] = audioread('datasets/clean_speech_2.wav');
 [s3, ~] = audioread('datasets/Speech_shaped_noise.wav');
 [s4, ~] = audioread('datasets/aritificial_nonstat_noise.wav');
 [s5, fs] = audioread('datasets/clean_speech.wav');  % Target source
@@ -53,13 +53,13 @@ noisy_frames = findnoise(s5, fs, N/2);
 
 %%
 % Empirical cross PSD
-alpha = 0.5;
+alpha = 0.2;
 K = size(F,1);
 L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
-mu = 0.5; 
+mu = 0.3; 
 for k = 1:K
     for l = 1:L
         if l==1
@@ -76,13 +76,15 @@ for k = 1:K
             end
         end
         [a,sigma_s] = estimate_a(Rx, Rn);
-        inv_Rn = pinv(Rn);
-        w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
+        inv_R = pinv(Rx);
+
+        % Multi channel
+        %w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
+
+        % MVDR
+        w = (inv_R *a ) / (a'*inv_R * a);
         S(k,l) = w'*vec_x(:); 
         Rn_prev= Rn; 
-        if isnan(S(k,l))
-            disp([k,l])
-        end
     end
 end
 
@@ -91,6 +93,11 @@ S(isnan(S))=0;
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
 
+%%
+hold("on")
+plot(s5)
+plot(real(s))
+hold("off")
 
-
-
+%%
+stoi(s5, real(s), fs) 
