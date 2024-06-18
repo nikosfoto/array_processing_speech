@@ -23,7 +23,7 @@ for i = 1:(length(s5)/ ov) -1
 
 end
 
-n_frames(n_frames == 160) = 1;  % Set elements equal to 160 to 1
+n_frames(n_frames == ov) = 1;  % Set elements equal to 160 to 1
 n_frames(n_frames ~= 1) = 0;  % Set all other
 
 end

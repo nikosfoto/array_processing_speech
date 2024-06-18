@@ -21,7 +21,7 @@ s3 = s3(1:max_length);
 s4 = [s4; s4(1:max_length-length(s4))];
 
 % adding the speech to the last part of the total duration
-s5 = [zeros(max_length-length(s5), 1); scaling_factor*s5];
+s5 = [zeros(max_length-length(s5), 1); s5];
 S = cat(2, s1, s2, s3, s4, s5);
 %%
 % Convolve the impulse responses for each source - microphone pair
@@ -49,7 +49,7 @@ noisy_frames = findnoise(s5, fs, N/2);
 
 % Parameters to be set
 alpha = 0.5;
-mu = 1; 
+mu = 0.7; 
 K = size(F,1);
 L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
@@ -78,14 +78,14 @@ for k = 1:K
         %inv_R = pinv(Rx);
         %w = (inv_R *a ) / (a'*inv_R * a);
 
-        % Multi channel
-        inv_R = pinv(Rn);
-        w = (sigma_s*inv_R*a)/(sigma_s*(a'*inv_R*a)+mu);
+        % % Multi channel
+        % inv_R = pinv(Rn);
+        % w = (sigma_s*inv_R*a)/(sigma_s*(a'*inv_R*a)+1);
 
-        % % Signal distortion weighted
-        % e = [1;0;0;0];
-        % Rs = sigma_s* a * a'; 
-        % w = pinv(Rs + mu*Rn)* Rs*e;
+        % Signal distortion weighted
+        e = [1;0;0;0];
+        Rs = sigma_s* a * a'; 
+        w = pinv(Rs + mu*Rn)* Rs*e;
 
         S(k,l) = w'*vec_x(:); 
         Rn_prev = Rn;
