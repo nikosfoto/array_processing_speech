@@ -1,0 +1,2 @@
+This repository contains all the code required for the project. The folder dataset contains all the audios and room impulse responses used. The function estimate_a is used to perform generalized eigenvalue decomposition to estimate a and sigma_s from Rx and Rn. 
+The function findnoise uses the clean speech signal to estimate the part of the signal when the target is not present and returns the noisy frames. Select values for alpha and mu, and select an appropriate beamformer before running proj2.m file. 
