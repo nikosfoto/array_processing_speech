@@ -84,7 +84,7 @@ for k = 1:K
 
         % Signal distortion weighted
         e = [1;0;0;0];
-        Rs = sigma_s* a * a'; 
+        Rs = sigma_s * (a * a'); 
         w = pinv(Rs + mu*Rn)* Rs*e;
 
         S(k,l) = w'*vec_x(:); 
