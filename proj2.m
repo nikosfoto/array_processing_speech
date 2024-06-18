@@ -12,14 +12,9 @@ H = struct2cell(load('impulse_responses.mat'));
 [s4, ~] = audioread('datasets/aritificial_nonstat_noise.wav');
 [s5, fs] = audioread('datasets/clean_speech.wav');  % Target source
 
-% Making the length of the whole recording one min and adding the clean
-% part at the end
-scaling_factor = 1;
+% Making the length of the whole recording 40 seconds and adding the clean
+% part at the end, and making all the noise signals the same length
 max_length = fs*40;  % 40 seconds
-% length of noisy part
-noisy_length_n = max_length - length(s5);
-
-% making all segments the same length
 s1 = [s1; s1(1:max_length-length(s1))];
 s2 = [s2; s2(1:max_length-length(s2))];
 s3 = s3(1:max_length);
@@ -45,21 +40,22 @@ signals_mics = squeeze(sum(signals_sources_mics, 2));
 N = 320;   % 20ms or alternatively N=256 for 16ms
 [X,F,T] = stft(signals_mics, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
-%noise_end_time = noisy_length_n/fs;  % in seconds
-%noise_frame_end = noise_end_time * fs*2/N;
-
+% Finding the noisy frames
 noisy_frames = findnoise(s5, fs, N/2);
-
-
 %%
-% Empirical cross PSD
-alpha = 0.7;
+
+% Finding the empirical cross PSD, and filter for each frequency bin and
+% time frame
+
+% Parameters to be set
+alpha = 0.5;
+mu = 1; 
 K = size(F,1);
 L = size(T,1);
 Rx = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 Rn = zeros(NUM_MICROPHONES, NUM_MICROPHONES);
 S = zeros(K, L);
-mu = 0.7; 
+
 for k = 1:K
     for l = 1:L
         if l==1
@@ -76,19 +72,20 @@ for k = 1:K
             end
         end
         [a,sigma_s] = estimate_a(Rx, Rn);
-
-        % Multi channel
-        %inv_R = pinv(Rn);
-        %w = (sigma_s*inv_Rn*a)/(sigma_s*(a'*inv_Rn*a)+mu);
+        % Select one of the following filters
 
         % % MVDR
-        % inv_R = pinv(Rx);
-        % w = (inv_R *a ) / (a'*inv_R * a);
+        %inv_R = pinv(Rx);
+        %w = (inv_R *a ) / (a'*inv_R * a);
 
-        % signal distortion weighted
-        e = [1;0;0;0];
-        Rs = sigma_s* a * a'; 
-        w = pinv(Rs + mu*Rn)* Rs*e;
+        % Multi channel
+        inv_R = pinv(Rn);
+        w = (sigma_s*inv_R*a)/(sigma_s*(a'*inv_R*a)+mu);
+
+        % % Signal distortion weighted
+        % e = [1;0;0;0];
+        % Rs = sigma_s* a * a'; 
+        % w = pinv(Rs + mu*Rn)* Rs*e;
 
         S(k,l) = w'*vec_x(:); 
         Rn_prev = Rn;
@@ -96,21 +93,23 @@ for k = 1:K
     end
 end
 
-% Now we're trying to isolate source 5 (target)...
+% Performing inverse STFT
 S(isnan(S))=0;
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
 
 %%
+% PLotting the clean and recovered signals
 hold("on")
 plot(s5)
 plot(real(s))
 hold("off")
 
 %%
-% pure_s5 = s5(end-577655+1:end);
+% Finding the STOI score
 pure_s5_mic1 = conv(s5(end-577655+1:end), H{5}(1,:), "same");
 stoi(pure_s5_mic1, real(s(end-577655+1:end)), fs) 
 %%
+% Finding the SNR 
 SNR_received = 20*log10( norm(pure_s5_mic1) / norm(signals_mics(end-577655+1:end,1)-pure_s5_mic1))
 SNR_output = 20*log10( norm(pure_s5_mic1) / norm(real(s(end-577655+1:end))-pure_s5_mic1))
