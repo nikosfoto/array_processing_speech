@@ -1,4 +1,4 @@
-clc; clear;
+clc;
 
 % Specify the paths to the files
 savedDir = 'saved/';
@@ -21,6 +21,7 @@ H = struct2cell(load('impulse_responses.mat'));
 
 clean = s5;
 clean_length = length(clean);
+max_clean = max(clean);
 
 % Making the length of the whole recording 40 secs and add the clean
 % part at the end
@@ -48,14 +49,25 @@ end
 % Superposition from all sources at each microphone:
 signals_mics = squeeze(sum(signals_sources_mics, 2));
 
-% Calculate target signal at microphone 1
-clean_mic1 = conv(clean, H{5}(1,:), "same");
+% % Calculate target signal at microphone 1
+% clean_mic1 = conv(clean, H{5}(1,:), "same");
+% max_clean = max(clean_mic1);
+
+corrupted = signals_mics(end-clean_length+1:end,1);
+max_corrupted = max(corrupted);
+corrupted = corrupted * (max_clean/max_corrupted);
 
 % Original SNR before processing
-snrOriginal = 20*log10( norm(clean_mic1) / norm(signals_mics(end-clean_length+1:end,1)-clean_mic1) );
+snrOriginal = 20*log10( norm(clean) / norm(corrupted-clean) );
 
 % Display the original SNR
-fprintf('Original SNR between clean speech and microphone 1: %.2fdB\n\n', snrOriginal);
+fprintf('Original SNR between clean speech and corrupted signal: %.2fdB\n\n', snrOriginal);
+
+% Calculate STOI for the original corrupted signal
+stoiOriginal = stoi(clean, corrupted, fs);
+
+% Display the original STOI
+fprintf('Original STOI between clean speech and corrupted signal: %.5f\n\n', stoiOriginal);
 
 % Calculate STOI for each saved file
 for i = 1:numFiles
@@ -64,16 +76,17 @@ for i = 1:numFiles
     [processed_signal, ~] = audioread(filePath);
     
     % Scale down
-    processed_signal = processed_signal / 100;
+    max_processed = max(processed_signal);
+    processed_signal = processed_signal * (max_clean/max_processed);
 
     % Calculate STOI
-    stoiValue = stoi(clean_mic1, processed_signal, fs);
+    stoiValue = stoi(clean, processed_signal, fs);
 
     % Calculate SNR for each saved file
-    snrValue = 20*log10( norm(clean_mic1) / norm(processed_signal - clean_mic1) );
+    snrValue = 20*log10( norm(clean) / norm(processed_signal - clean) );
     
     % Display the STOI value
-    fprintf('STOI between clean speech and %s: %.5f\n', fileList(i).name, stoiValue);
+    fprintf('STOI between clean speech and %s: %.4f\n', fileList(i).name, stoiValue);
 
     % Display the SNR value
     fprintf('SNR between clean speech and %s: %.2fdB\n\n', fileList(i).name, snrValue);

@@ -1,4 +1,4 @@
-clear; close; clc;
+close; clc;
 
 % Define problem variables
 NUM_SOURCES = 5;
@@ -11,6 +11,10 @@ H = struct2cell(load('impulse_responses.mat'));
 [s3, ~] = audioread('datasets/Speech_shaped_noise.wav');
 [s4, ~] = audioread('datasets/aritificial_nonstat_noise.wav');
 [s5, fs] = audioread('datasets/clean_speech.wav');  % Target source
+
+clean = s5;
+clean_length = length(clean);
+max_clean = max(clean);
 
 % Making the length of the whole recording 40 seconds and adding the clean
 % part at the end, and making all the noise signals the same length
@@ -35,6 +39,22 @@ end
 
 % Superposition from all sources at each microphone:
 signals_mics = squeeze(sum(signals_sources_mics, 2));
+
+corrupted = signals_mics(end-clean_length+1:end,1);
+max_corrupted = max(corrupted);
+corrupted = corrupted * (max_clean/max_corrupted);
+
+% Original SNR before processing
+snrOriginal = 20*log10( norm(clean) / norm(corrupted-clean) );
+
+% Display the original SNR
+fprintf('Original SNR between clean speech and corrupted signal: %.2fdB\n\n', snrOriginal);
+
+% Calculate STOI for the original corrupted signal
+stoiOriginal = stoi(clean, corrupted, fs);
+
+% Display the original STOI
+fprintf('Original STOI between clean speech and corrupted signal: %.5f\n\n', stoiOriginal);
 %%
 % Perform STFT
 N = 320;   % 20ms or alternatively N=256 for 16ms
@@ -97,6 +117,10 @@ end
 S(isnan(S))=0;
 [s, t] = istft(S, fs, Window=hamming(N), OverlapLength=N/2, FFTLength=512);
 
+% Obtain resulting signal (real part)
+processed_signal = real(s(end-clean_length+1:end));
+max_processed = max(processed_signal);
+processed_signal = processed_signal * (max_clean/max_processed);
 
 %%
 % PLotting the clean and recovered signals
@@ -106,10 +130,11 @@ plot(real(s))
 hold("off")
 
 %%
-% Finding the STOI score
-pure_s5_mic1 = conv(s5(end-577655+1:end), H{5}(1,:), "same");
-stoi(pure_s5_mic1, real(s(end-577655+1:end)), fs) 
+% Calculate STOI
+stoiValue = stoi(clean, processed_signal, fs);
+fprintf('STOI between clean speech and processed signal: %.4f\n', stoiValue);
+
 %%
-% Finding the SNR 
-SNR_received = 20*log10( norm(pure_s5_mic1) / norm(signals_mics(end-577655+1:end,1)-pure_s5_mic1))
-SNR_output = 20*log10( norm(pure_s5_mic1) / norm(real(s(end-577655+1:end))-pure_s5_mic1))
+% Finding the SNR
+snrValue = 20*log10( norm(clean) / norm(clean - processed_signal) );
+fprintf('SNR between clean speech and processed signal: %.2fdB\n\n', snrValue);
